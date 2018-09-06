@@ -1,0 +1,9 @@
+[package]
+name = "maya-tools-installer"
+version = "0.1.0"
+authors = ["Giorgio Pomettini <giorgio.pomettini@gmail.com>"]
+
+[dependencies]
+curl = "0.4.14"
+os_type = "1.0.0"
+dirs = "1.0.3"
