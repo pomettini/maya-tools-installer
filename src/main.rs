@@ -58,7 +58,7 @@ fn main()
         },
         None => 
         {
-            write_log_new(format!("Maya directory not found: {:?}", &maya_directory));
+            write_log("Maya directory not found:");
             panic!();
         }
     }
@@ -142,6 +142,8 @@ fn get_maya_directory() -> Option<PathBuf>
         // This will probably be Windows, or maybe not
         _ => maya_directory.push("\\Documents\\maya\\")
     }
+
+    print!("Maya directory: {:?}", &maya_directory);
 
     if maya_directory.exists()
     {
