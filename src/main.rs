@@ -1,48 +1,113 @@
-extern crate curl;
+extern crate reqwest;
 extern crate os_type;
 extern crate dirs;
 
 use std::io::{stdout, Write};
-use std::path::{PathBuf};
+use std::path::{Path, PathBuf};
 
-use curl::easy::Easy;
+use std::fs::File;
+use std::io::prelude::*;
+use std::io;
+
+const SHELF_URL: &'static str = "https://cdn.rawgit.com/Pomettini/maya-tools/8b6519c3/shelf/shelf_AIV.mel";
+const SHELF_FILE_NAME: &'static str = "shelf_AIV.mel";
 
 fn main() 
 {
-    let mut maya_valid_install_directories: Vec<PathBuf> = Vec::new();
+    let mut shelf_content: String;
 
-    let maya_dir = get_maya_directory().unwrap();
-    let maya_versions = get_maya_installed_versions(&maya_dir);
+    // Check if remote shelf file exists
 
-    for version in maya_versions
+    // Download shelf file
+    match reqwest::get(SHELF_URL)
     {
-        let mut maya_complete_path = PathBuf::new();
-
-        maya_complete_path.push(&maya_dir);
-
-        let s = get_maya_shelf_directory(&maya_dir, &version);
-
-        match s
+        Ok(mut request) => 
         {
-            Some(s) => 
+            match request.text()
             {
-                maya_complete_path.push(s);
-                println!("Adding Maya {} to the valid install directories", &version);
-                maya_valid_install_directories.push(maya_complete_path);
-            },
-            None => println!("Shelf directory doesn't exist for version {}", &version)
+                Ok(text) => 
+                {
+                    write_log("Shelf downloaded");
+                    shelf_content = text;
+                },
+                Err(error) => 
+                {
+                    write_log_new(format!("Shelf downloaded but got error: {}", error));
+                    panic!();
+                }
+            }
+        },
+        Err(error) => 
+        {
+            write_log_new(format!("Error downloading shelf: {}", error));
+            panic!();
         }
     }
 
-    // let mut easy = Easy::new();
-    // easy.url("https://cdn.rawgit.com/Pomettini/maya-tools/8b6519c3/shelf/shelf_AIV.mel").unwrap();
-    // easy.write_function(|data| {
-    //     stdout().write_all(data).unwrap();
-    //     Ok(data.len())
-    // }).unwrap();
-    // easy.perform().unwrap();
+    // Check CRC (optional)
 
-    // println!("{}", easy.response_code().unwrap());
+    let mut maya_directory: PathBuf = PathBuf::new();
+
+    // Get Maya directory
+    // Check if Maya directory exists
+    match get_maya_directory()
+    {
+        Some(path) => 
+        {
+            write_log("Found Maya directory");
+            maya_directory = path;
+        },
+        None => 
+        {
+            write_log("Maya directory not found");
+            panic!();
+        }
+    }
+
+    // Check which versions of Maya are installed
+    let maya_installed_versions = get_maya_installed_versions(&maya_directory);
+    // For each Maya version:
+    for maya_version in maya_installed_versions
+    {
+        write_log_new(format!("Now working on Maya version {}", maya_version));
+
+        let mut maya_shelf_directory: PathBuf = PathBuf::new();
+
+        // Get Maya shelf directory
+        // Check if Maya shelf directory exists
+        match get_maya_shelf_directory(&maya_directory, &maya_version)
+        {
+            Some(path) => 
+            {
+                write_log_new(format!("Found shelf directory for Maya {}, moving on", maya_version));
+                maya_shelf_directory = path;
+            },
+            None => 
+            {
+                write_log_new(format!("There is no shelf directory for Maya {}, moving to next version", maya_version));
+                continue;
+            }
+        }
+
+        // Get complete shelf path with filename and extension
+        let mut maya_file_shelf_path = PathBuf::from(&maya_shelf_directory);
+        maya_file_shelf_path.push(SHELF_FILE_NAME);
+
+        // Write shelf file
+        match write_file(&shelf_content, &maya_file_shelf_path)
+        {
+            Ok(result) => 
+            {
+                write_log("Write complete!");
+            },
+            Err(error) => 
+            {
+                write_log_new(format!("Could not write on the directory: {}", error));
+            }
+        }
+
+        // Check if shelf file exist
+    }
 }
 
 fn get_maya_directory() -> Option<PathBuf>
@@ -62,7 +127,14 @@ fn get_maya_directory() -> Option<PathBuf>
         _ => maya_directory.push("\\Documents\\maya\\")
     }
 
-    Some(maya_directory)
+    if maya_directory.exists()
+    {
+        Some(maya_directory)
+    }
+    else 
+    {
+        None
+    }
 }
 
 fn get_maya_shelf_directory(maya_path: &PathBuf, maya_version: &usize) -> Option<PathBuf>
@@ -92,7 +164,8 @@ fn get_maya_installed_versions(maya_path: &PathBuf) -> Vec<usize>
     {
         if let Ok(entry) = entry 
         {
-            for version in 2011..2030 
+            // Inefficent, needs refactor
+            for version in 2011..2020 
             {
                 if entry.path().ends_with(version.to_string())
                 {
@@ -103,4 +176,23 @@ fn get_maya_installed_versions(maya_path: &PathBuf) -> Vec<usize>
     }
 
     maya_versions
+}
+
+fn write_file(content: &String, path: &PathBuf) -> io::Result<()>
+{
+    let mut file = File::create(path)?;
+    file.write_all(&content.as_bytes())?;
+    Ok(())
+}
+
+// TODO Refactor with generics
+
+fn write_log(content: &'static str)
+{
+    println!("{:?}", content);
+}
+
+fn write_log_new(content: String)
+{
+    println!("{:?}", content);
 }
