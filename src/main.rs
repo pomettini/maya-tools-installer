@@ -3,7 +3,7 @@ extern crate os_type;
 extern crate dirs;
 
 use std::io::{Write};
-use std::path::{ PathBuf};
+use std::path::{PathBuf};
 
 use std::fs::File;
 use std::io;
@@ -83,7 +83,7 @@ fn main()
             },
             None => 
             {
-                write_log_new(format!("There is no shelf directory for Maya {}, moving to next version", maya_version));
+                write_log_new(format!("There is no shelf directory for Maya {}, moving to the next version", maya_version));
                 continue;
             }
         }
@@ -92,12 +92,18 @@ fn main()
         let mut maya_file_shelf_path = PathBuf::from(&maya_shelf_directory);
         maya_file_shelf_path.push(SHELF_FILE_NAME);
 
+        // Check if shelf file exist
+        if maya_file_shelf_path.exists()
+        {
+            write_log("File already exists, will be overwritten");
+        }
+
         // Write shelf file
         match write_file(&shelf_content, &maya_file_shelf_path)
         {
-            Ok(result) => 
+            Ok(()) => 
             {
-                write_log("Write complete!");
+                write_log("Write complete");
             },
             Err(error) => 
             {
@@ -105,8 +111,19 @@ fn main()
             }
         }
 
-        // Check if shelf file exist
+        // Check if shelf file has been written
+        if maya_file_shelf_path.exists()
+        {
+            write_log("File has been written, moving on");
+        }
+        else 
+        {
+            write_log("File has not been written");
+        }
     }
+
+    // Close and do stuff
+    write_log("Installation complete");
 }
 
 fn get_maya_directory() -> Option<PathBuf>
