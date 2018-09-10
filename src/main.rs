@@ -58,7 +58,7 @@ fn main()
         },
         None => 
         {
-            write_log("Maya directory not found");
+            write_log_new(format!("Maya directory not found: {:?}", &maya_directory));
             panic!();
         }
     }
@@ -212,3 +212,5 @@ fn write_log_new(content: String)
 {
     println!("{:?}", content);
 }
+
+// TODO Downloading of icons
