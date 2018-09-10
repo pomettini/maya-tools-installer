@@ -2,11 +2,10 @@ extern crate reqwest;
 extern crate os_type;
 extern crate dirs;
 
-use std::io::{stdout, Write};
-use std::path::{Path, PathBuf};
+use std::io::{Write};
+use std::path::{ PathBuf};
 
 use std::fs::File;
-use std::io::prelude::*;
 use std::io;
 
 const SHELF_URL: &'static str = "https://cdn.rawgit.com/Pomettini/maya-tools/8b6519c3/shelf/shelf_AIV.mel";
@@ -14,7 +13,7 @@ const SHELF_FILE_NAME: &'static str = "shelf_AIV.mel";
 
 fn main() 
 {
-    let mut shelf_content: String;
+    let shelf_content: String;
 
     // Check if remote shelf file exists
 
@@ -46,7 +45,7 @@ fn main()
 
     // Check CRC (optional)
 
-    let mut maya_directory: PathBuf = PathBuf::new();
+    let mut maya_directory = PathBuf::new();
 
     // Get Maya directory
     // Check if Maya directory exists
@@ -71,7 +70,7 @@ fn main()
     {
         write_log_new(format!("Now working on Maya version {}", maya_version));
 
-        let mut maya_shelf_directory: PathBuf = PathBuf::new();
+        let mut maya_shelf_directory = PathBuf::new();
 
         // Get Maya shelf directory
         // Check if Maya shelf directory exists
