@@ -6,64 +6,19 @@ extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
 
-use std::io::{Write};
 use std::path::{PathBuf};
-use std::fs::File;
-use std::io;
-use serde_json::{Error};
 
-const AIV_SHELF_URL: &str = "https://www.giorgiopomettini.eu/aiv_shelf.json";
+pub mod installer;
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Shelf 
-{
-    response: String,
-    shelf_url: String,
-    shelf_name: String,
-    icons_url: String,
-    icons_name: Vec<String>,
-    icons_extension: String,
-    icons_variants: Vec<String>
-}
-
-#[derive(Debug, Default)]
-struct Icon
-{
-    name: String,
-    data: String
-}
+use installer::*;
 
 fn main() 
 {
     let shelf: Shelf;
-    let mut icons: Vec<Icon> = Vec::new();
-    let shelf_data: String;
+    let mut shelf_data = String::new();
 
     // Get Json data
-    match reqwest::get(AIV_SHELF_URL)
-    {
-        Ok(mut request) => 
-        {
-            match request.text()
-            {
-                Ok(text) => 
-                {
-                    write_log("Shelf data downloaded");
-                    shelf_data = text;
-                },
-                Err(error) => 
-                {
-                    write_log_new(&format!("Shelf data downloaded but got error: {}", error));
-                    panic!();
-                }
-            }
-        },
-        Err(error) => 
-        {
-            write_log_new(&format!("Error downloading shelf data: {}", error));
-            panic!();
-        }
-    }
+    shelf_data = get_json_data();
 
     // Parse Json data
     let json_data = get_shelf_data(&shelf_data);
@@ -91,77 +46,16 @@ fn main()
         }
     }
 
-    let shelf_content: String;
-
-    // Check if remote shelf file exists
-
     // Download shelf file
-    match reqwest::get(&format!("{}{}", &shelf.shelf_url, &shelf.shelf_name))
-    {
-        Ok(mut request) => 
-        {
-            match request.text()
-            {
-                Ok(text) => 
-                {
-                    write_log("Shelf downloaded");
-                    shelf_content = text;
-                },
-                Err(error) => 
-                {
-                    write_log_new(&format!("Shelf downloaded but got error: {}", error));
-                    panic!();
-                }
-            }
-        },
-        Err(error) => 
-        {
-            write_log_new(&format!("Error downloading shelf: {}", error));
-            panic!();
-        }
-    }
+    let shelf_content = download_shelf_file(&shelf);
 
     // Check shelf file CRC (optional)
 
     // Constructing Icons urls
-    for icon in &shelf.icons_name
-    {
-        for variant in &shelf.icons_variants
-        {
-            let mut i: Icon = Default::default();
-            i.name = format!("{}{}.{}", &icon, &variant, &shelf.icons_extension);
-            icons.push(i);
-        }
-    }
+    let mut icons = construct_icons_url(&shelf);
 
     // Download icons
-    for icon in &mut icons
-    {
-        write_log_new(&format!("Downloading icon {}", &icon.name));
-
-        match reqwest::get(&format!("{}{}", &shelf.icons_url, &icon.name))
-        {
-            Ok(mut request) => 
-            {
-                match request.text()
-                {
-                    Ok(data) => 
-                    {
-                        write_log_new(&format!("Icon {} downloaded", &icon.name));
-                        icon.data = data;
-                    },
-                    Err(error) => 
-                    {
-                        write_log_new(&format!("Icon downloaded but got error: {}", error));
-                    }
-                }
-            },
-            Err(error) => 
-            {
-                write_log_new(&format!("Error downloading icon: {}", error));
-            }
-        }
-    }
+    download_icons(&shelf, &mut icons);
 
     let mut maya_directory = PathBuf::new();
 
@@ -208,7 +102,7 @@ fn main()
 
         // Get complete shelf path with filename and extension
         let mut maya_file_shelf_path = PathBuf::from(&maya_shelf_directory);
-        maya_file_shelf_path.push(&shelf.shelf_url);
+        maya_file_shelf_path.push(&shelf.shelf_name);
 
         // Check if shelf file exist
         if maya_file_shelf_path.exists()
@@ -225,7 +119,7 @@ fn main()
             },
             Err(error) => 
             {
-                write_log_new(&format!("Could not write on the directory: {}", error));
+                write_log_new(&format!("Could not write on the directory {:?}: {}", &maya_file_shelf_path, error));
             }
         }
 
@@ -238,132 +132,39 @@ fn main()
         {
             write_log("File has not been written");
         }
+
+        // let mut maya_icons_directory = PathBuf::new();
+
+        // // Get Maya icons directory
+        // match get_maya_icons_directory(&maya_directory, &maya_version)
+        // {
+        //     Some(path) => 
+        //     {
+        //         write_log_new(&format!("Found icons directory for Maya {}, moving on", maya_version));
+        //         maya_icons_directory = path;
+        //     },
+        //     None => 
+        //     {
+        //         write_log_new(&format!("There is no icons directory for Maya {}, moving to the next version", maya_version));
+        //         continue;
+        //     }
+        // }
+
+        // let mut maya_icons_path = PathBuf::from(&maya_directory);
+        
+
+        // Check if Maya icons directory exists
+
+        // For each icon
+        // Get complete icon path with filename and extension
+
+        // Check if icon file ecits
+
+        // Write icon file
+
+        // Check if shelf file has been written
     }
 
     // Close and do stuff
     write_log("Installation complete");
-}
-
-fn get_maya_directory() -> Option<PathBuf>
-{
-    let mut maya_directory = PathBuf::new();
-
-    match dirs::home_dir()
-    {
-        Some(path) => maya_directory.push(path),
-        None => panic!("Cannot get your HOME dir"),
-    }
-
-    match os_type::current_platform().os_type 
-    {
-        os_type::OSType::OSX => 
-        {
-            maya_directory.push("Library");
-            maya_directory.push("Preferences");
-            maya_directory.push("Autodesk");
-            maya_directory.push("maya");
-        },
-        // This will probably be Windows, or maybe not
-        _ => 
-        {
-            maya_directory.push("Documents");
-            maya_directory.push("maya");
-        }
-    }
-
-    println!("Maya directory: {:?}", &maya_directory);
-
-    if maya_directory.exists()
-    {
-        Some(maya_directory)
-    }
-    else 
-    {
-        None
-    }
-}
-
-fn get_maya_shelf_directory(maya_path: &PathBuf, maya_version: &usize) -> Option<PathBuf>
-{
-    let mut shelf_directory = PathBuf::new();
-
-    shelf_directory.push(&maya_path);
-    shelf_directory.push(maya_version.to_string());
-    shelf_directory.push("prefs");
-    shelf_directory.push("shelves");
-
-    if shelf_directory.exists()
-    {
-        Some(shelf_directory)
-    }
-    else 
-    {
-        None
-    }
-}
-
-fn get_maya_icons_directory(maya_path: &PathBuf, maya_version: &usize) -> Option<PathBuf>
-{
-    let mut icons_directory = PathBuf::new();
-
-    icons_directory.push(&maya_path);
-    icons_directory.push(maya_version.to_string());
-    icons_directory.push("prefs");
-    icons_directory.push("icons");
-
-    if icons_directory.exists()
-    {
-        Some(icons_directory)
-    }
-    else 
-    {
-        None
-    }
-}
-
-fn get_maya_installed_versions(maya_path: &PathBuf) -> Vec<usize>
-{
-    let mut maya_versions = Vec::new();
-
-    for entry in maya_path.read_dir().unwrap()
-    {
-        if let Ok(entry) = entry 
-        {
-            // Inefficent, needs refactor
-            for version in 2011..2020 
-            {
-                if entry.path().ends_with(version.to_string())
-                {
-                    maya_versions.push(version);
-                }
-            }
-        }
-    }
-
-    maya_versions
-}
-
-fn write_file(content: &str, path: &PathBuf) -> io::Result<()>
-{
-    let mut file = File::create(path)?;
-    file.write_all(&content.as_bytes())?;
-    Ok(())
-}
-
-fn get_shelf_data(data: &str) -> Result<Shelf, Error> 
-{
-    let shelf: Shelf = serde_json::from_str(data)?;
-    Ok(shelf)
-}
-
-// TODO Refactor with generics
-
-fn write_log(content: &'static str)
-{
-    println!("{:?}", content);
-}
-
-fn write_log_new(content: &str)
-{
-    println!("{:?}", content);
 }
