@@ -17,13 +17,13 @@ const AIV_SHELF_URL: &str = "https://www.giorgiopomettini.eu/aiv_shelf.json";
 #[derive(Serialize, Deserialize, Debug)]
 struct Shelf 
 {
-    Response: String,
-    ShelfURL: String,
-    ShelfName: String,
-    IconsURL: String,
-    IconsName: Vec<String>,
-    IconsExtension: String,
-    IconsVariants: Vec<String>
+    response: String,
+    shelf_url: String,
+    shelf_name: String,
+    icons_url: String,
+    icons_name: Vec<String>,
+    icons_extension: String,
+    icons_variants: Vec<String>
 }
 
 #[derive(Debug, Default)]
@@ -73,7 +73,7 @@ fn main()
     {
         Ok(shelf_data) => 
         {
-            if shelf_data.Response == "OK"
+            if shelf_data.response == "OK"
             {
                 write_log("Shelf data OK");
                 shelf = shelf_data;
@@ -96,7 +96,7 @@ fn main()
     // Check if remote shelf file exists
 
     // Download shelf file
-    match reqwest::get(&format!("{}{}", &shelf.ShelfURL, &shelf.ShelfName))
+    match reqwest::get(&format!("{}{}", &shelf.shelf_url, &shelf.shelf_name))
     {
         Ok(mut request) => 
         {
@@ -124,12 +124,12 @@ fn main()
     // Check shelf file CRC (optional)
 
     // Constructing Icons urls
-    for icon in &shelf.IconsName
+    for icon in &shelf.icons_name
     {
-        for variant in &shelf.IconsVariants
+        for variant in &shelf.icons_variants
         {
             let mut i: Icon = Default::default();
-            i.name = format!("{}{}.{}", &icon, &variant, &shelf.IconsExtension);
+            i.name = format!("{}{}.{}", &icon, &variant, &shelf.icons_extension);
             icons.push(i);
         }
     }
@@ -139,7 +139,7 @@ fn main()
     {
         write_log_new(&format!("Downloading icon {}", &icon.name));
 
-        match reqwest::get(&format!("{}{}", &shelf.IconsURL, &icon.name))
+        match reqwest::get(&format!("{}{}", &shelf.icons_url, &icon.name))
         {
             Ok(mut request) => 
             {
@@ -208,7 +208,7 @@ fn main()
 
         // Get complete shelf path with filename and extension
         let mut maya_file_shelf_path = PathBuf::from(&maya_shelf_directory);
-        maya_file_shelf_path.push(&shelf.ShelfName);
+        maya_file_shelf_path.push(&shelf.shelf_url);
 
         // Check if shelf file exist
         if maya_file_shelf_path.exists()
