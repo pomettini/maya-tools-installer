@@ -118,7 +118,7 @@ fn main()
             }
 
             // Write icon file
-            match write_file(&icon.data, &icon_path)
+            match write_file_binary(&icon.data, &icon_path)
             {
                 Ok(()) => 
                 {

@@ -9,6 +9,8 @@ use std::path::{PathBuf};
 use std::fs::File;
 use std::io;
 use serde_json::{Error};
+use reqwest::mime;
+use reqwest::header::{ContentType, ContentDisposition, DispositionType, Encoding};
 
 const AIV_SHELF_URL: &str = "https://www.giorgiopomettini.eu/aiv_shelf.json";
 
@@ -28,7 +30,7 @@ pub struct Shelf
 pub struct Icon
 {
     pub name: String,
-    pub data: String
+    pub data: Vec<u8>
 }
 
 pub fn get_json_data() -> String
@@ -59,38 +61,17 @@ pub fn get_json_data() -> String
     }
 }
 
-pub fn download_shelf_file(shelf: &Shelf) -> String
-{
-    match reqwest::get(&format!("{}{}", &shelf.shelf_url, &shelf.shelf_name))
-    {
-        Ok(mut request) => 
-        {
-            match request.text()
-            {
-                Ok(text) => 
-                {
-                    write_log("Shelf downloaded");
-                    text
-                },
-                Err(error) => 
-                {
-                    write_log_new(&format!("Shelf downloaded but got error: {}", error));
-                    panic!();
-                }
-            }
-        },
-        Err(error) => 
-        {
-            write_log_new(&format!("Error downloading shelf: {}", error));
-            panic!();
-        }
-    }
-}
-
 pub fn write_file(content: &str, path: &PathBuf) -> io::Result<()>
 {
     let mut file = File::create(path)?;
     file.write_all(&content.as_bytes())?;
+    Ok(())
+}
+
+pub fn write_file_binary(content: &Vec<u8>, path: &PathBuf) -> io::Result<()>
+{
+    let mut file = File::create(path)?;
+    file.write_all(&content)?;
     Ok(())
 }
 
@@ -216,6 +197,34 @@ pub fn construct_icons_url(shelf: &Shelf) -> Vec<Icon>
     icons
 }
 
+pub fn download_shelf_file(shelf: &Shelf) -> String
+{
+    match reqwest::get(&format!("{}{}", &shelf.shelf_url, &shelf.shelf_name))
+    {
+        Ok(mut request) => 
+        {
+            match request.text()
+            {
+                Ok(text) => 
+                {
+                    write_log("Shelf downloaded");
+                    text
+                },
+                Err(error) => 
+                {
+                    write_log_new(&format!("Shelf downloaded but got error: {}", error));
+                    panic!();
+                }
+            }
+        },
+        Err(error) => 
+        {
+            write_log_new(&format!("Error downloading shelf: {}", error));
+            panic!();
+        }
+    }
+}
+
 pub fn download_icons(shelf: &Shelf, icons: &mut Vec<Icon>)
 {
     for icon in icons
@@ -224,22 +233,19 @@ pub fn download_icons(shelf: &Shelf, icons: &mut Vec<Icon>)
         
         match reqwest::get(&format!("{}{}", &shelf.icons_url, &icon.name))
         {
-            Ok(mut request) => 
+            Ok(mut request) =>
             {
-                match request.text()
+                let mut buffer: Vec<u8> = vec![];
+                match request.copy_to(&mut buffer)
                 {
-                    Ok(data) => 
+                    Ok(_size) =>
                     {
-                        write_log_new(&format!("Icon {} downloaded", &icon.name));
-                        icon.data = data;
+                        icon.data = buffer;
                     },
-                    Err(error) => 
-                    {
-                        write_log_new(&format!("Icon downloaded but got error: {}", error));
-                    }
+                    Err(_error) => ()
                 }
             },
-            Err(error) => 
+            Err(error) =>
             {
                 write_log_new(&format!("Error downloading icon: {}", error));
             }
