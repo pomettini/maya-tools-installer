@@ -14,37 +14,14 @@ use installer::*;
 
 fn main() 
 {
-    let shelf: Shelf;
-    let mut shelf_data = String::new();
-
     // Get Json data
-    shelf_data = get_json_data();
+    let json = get_json_data();
 
     // Parse Json data
-    let json_data = get_shelf_data(&shelf_data);
+    let parsed_json = get_shelf_data(&json);
 
     // Check if Json data is ok
-    match json_data
-    {
-        Ok(shelf_data) => 
-        {
-            if shelf_data.response == "OK"
-            {
-                write_log("Shelf data OK");
-                shelf = shelf_data;
-            }
-            else 
-            {
-                write_log("Shelf data error");
-                panic!();
-            }
-        },
-        Err(error) =>
-        {
-            write_log("Json cannot be parsed");
-            panic!();
-        }
-    }
+    let shelf = check_json(parsed_json);
 
     // Download shelf file
     let shelf_content = download_shelf_file(&shelf);
@@ -57,23 +34,9 @@ fn main()
     // Download icons
     download_icons(&shelf, &mut icons);
 
-    let mut maya_directory = PathBuf::new();
-
     // Get Maya directory
     // Check if Maya directory exists
-    match get_maya_directory()
-    {
-        Some(path) => 
-        {
-            write_log("Found Maya directory");
-            maya_directory = path;
-        },
-        None => 
-        {
-            write_log("Maya directory not found:");
-            panic!();
-        }
-    }
+    let mut maya_directory = set_maya_directory();
 
     // Check which versions of Maya are installed
     let maya_installed_versions = get_maya_installed_versions(&maya_directory);
@@ -123,35 +86,24 @@ fn main()
             }
         }
 
-        // Check if shelf file has been written
-        if maya_file_shelf_path.exists()
+        let mut maya_icons_directory = PathBuf::new();
+
+        // Get Maya icons directory
+        match get_maya_icons_directory(&maya_directory, &maya_version)
         {
-            write_log("File has been written, moving on");
+            Some(path) => 
+            {
+                write_log_new(&format!("Found icons directory for Maya {}, moving on", maya_version));
+                maya_icons_directory = path;
+            },
+            None => 
+            {
+                write_log_new(&format!("There is no icons directory for Maya {}, moving to the next version", maya_version));
+                continue;
+            }
         }
-        else 
-        {
-            write_log("File has not been written");
-        }
 
-        // let mut maya_icons_directory = PathBuf::new();
-
-        // // Get Maya icons directory
-        // match get_maya_icons_directory(&maya_directory, &maya_version)
-        // {
-        //     Some(path) => 
-        //     {
-        //         write_log_new(&format!("Found icons directory for Maya {}, moving on", maya_version));
-        //         maya_icons_directory = path;
-        //     },
-        //     None => 
-        //     {
-        //         write_log_new(&format!("There is no icons directory for Maya {}, moving to the next version", maya_version));
-        //         continue;
-        //     }
-        // }
-
-        // let mut maya_icons_path = PathBuf::from(&maya_directory);
-        
+        let mut maya_icons_path = PathBuf::from(&maya_directory);
 
         // Check if Maya icons directory exists
 

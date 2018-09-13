@@ -247,6 +247,48 @@ pub fn download_icons(shelf: &Shelf, icons: &mut Vec<Icon>)
     }
 }
 
+pub fn set_maya_directory() -> PathBuf
+{
+    match get_maya_directory()
+    {
+        Some(path) => 
+        {
+            write_log("Found Maya directory");
+            path
+        },
+        None => 
+        {
+            write_log("Maya directory not found:");
+            panic!();
+        }
+    }
+}
+
+pub fn check_json(json_data: Result<Shelf, Error>) -> Shelf
+{
+    match json_data
+    {
+        Ok(shelf_data) => 
+        {
+            if shelf_data.response == "OK"
+            {
+                write_log("Shelf data OK");
+                shelf_data
+            }
+            else 
+            {
+                write_log("Shelf data error");
+                panic!();
+            }
+        },
+        Err(error) =>
+        {
+            write_log_new(&format!("Json cannot be parsed: {}", error));
+            panic!();
+        }
+    }
+}
+
 // TODO Refactor with generics
 
 pub fn write_log(content: &'static str)
