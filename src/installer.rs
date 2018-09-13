@@ -221,7 +221,7 @@ pub fn download_icons(shelf: &Shelf, icons: &mut Vec<Icon>)
     for icon in icons
     {
         write_log_new(&format!("Downloading icon {}", &icon.name));
-
+        
         match reqwest::get(&format!("{}{}", &shelf.icons_url, &icon.name))
         {
             Ok(mut request) => 

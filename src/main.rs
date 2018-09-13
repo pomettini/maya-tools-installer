@@ -36,7 +36,7 @@ fn main()
 
     // Get Maya directory
     // Check if Maya directory exists
-    let mut maya_directory = set_maya_directory();
+    let maya_directory = set_maya_directory();
 
     // Check which versions of Maya are installed
     let maya_installed_versions = get_maya_installed_versions(&maya_directory);
@@ -70,7 +70,7 @@ fn main()
         // Check if shelf file exist
         if maya_file_shelf_path.exists()
         {
-            write_log("File already exists, will be overwritten");
+            write_log("Shelf already exists, will be overwritten");
         }
 
         // Write shelf file
@@ -78,17 +78,18 @@ fn main()
         {
             Ok(()) => 
             {
-                write_log("Write complete");
+                write_log("Shelf writing complete");
             },
             Err(error) => 
             {
-                write_log_new(&format!("Could not write on the directory {:?}: {}", &maya_file_shelf_path, error));
+                write_log_new(&format!("Could not write shelf on the directory {:?}: {}", &maya_file_shelf_path, error));
             }
         }
 
         let mut maya_icons_directory = PathBuf::new();
 
         // Get Maya icons directory
+        // Check if Maya icons directory exists
         match get_maya_icons_directory(&maya_directory, &maya_version)
         {
             Some(path) => 
@@ -103,18 +104,32 @@ fn main()
             }
         }
 
-        let mut maya_icons_path = PathBuf::from(&maya_directory);
-
-        // Check if Maya icons directory exists
-
         // For each icon
-        // Get complete icon path with filename and extension
+        for icon in &icons
+        {
+            // Get complete icon path with filename and extension
+            let mut icon_path = PathBuf::from(&maya_icons_directory);
+            icon_path.push(&icon.name);
+            
+            // Check if icon file exists
+            if icon_path.exists()
+            {
+                write_log_new(&format!("File at {:?} already exists, will be overwritten", &icon_path));
+            }
 
-        // Check if icon file ecits
-
-        // Write icon file
-
-        // Check if shelf file has been written
+            // Write icon file
+            match write_file(&icon.data, &icon_path)
+            {
+                Ok(()) => 
+                {
+                    write_log_new(&format!("Writing icon {} complete", &icon.name));
+                },
+                Err(error) => 
+                {
+                    write_log_new(&format!("Could not write icon on the directory {:?}: {}", &icon_path, error));
+                }
+            }
+        }
     }
 
     // Close and do stuff
