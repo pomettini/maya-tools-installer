@@ -9,8 +9,6 @@ use std::path::{PathBuf};
 use std::fs::File;
 use std::io;
 use serde_json::{Error};
-use reqwest::mime;
-use reqwest::header::{ContentType, ContentDisposition, DispositionType, Encoding};
 
 const AIV_SHELF_URL: &str = "https://www.giorgiopomettini.eu/aiv_shelf.json";
 
