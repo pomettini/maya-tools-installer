@@ -59,140 +59,35 @@ pub fn get_json_data() -> String
     }
 }
 
-pub fn write_file(content: &str, path: &PathBuf) -> io::Result<()>
-{
-    let mut file = File::create(path)?;
-    file.write_all(&content.as_bytes())?;
-    Ok(())
-}
-
-pub fn write_file_binary(content: &Vec<u8>, path: &PathBuf) -> io::Result<()>
-{
-    let mut file = File::create(path)?;
-    file.write_all(&content)?;
-    Ok(())
-}
-
 pub fn get_shelf_data(data: &str) -> Result<Shelf, Error> 
 {
     let shelf: Shelf = serde_json::from_str(data)?;
     Ok(shelf)
 }
 
-pub fn get_maya_directory() -> Option<PathBuf>
+pub fn check_json(json_data: Result<Shelf, Error>) -> Shelf
 {
-    let mut maya_directory = PathBuf::new();
-
-    match dirs::home_dir()
+    match json_data
     {
-        Some(path) => maya_directory.push(path),
-        None => panic!("Cannot get your HOME dir"),
-    }
-
-    match os_type::current_platform().os_type 
-    {
-        os_type::OSType::OSX => 
+        Ok(shelf_data) => 
         {
-            maya_directory.push("Library");
-            maya_directory.push("Preferences");
-            maya_directory.push("Autodesk");
-            maya_directory.push("maya");
-        },
-        // This will probably be Windows, or maybe not
-        _ => 
-        {
-            maya_directory.push("Documents");
-            maya_directory.push("maya");
-        }
-    }
-
-    info!("Maya directory: {:?}", &maya_directory);
-
-    if maya_directory.exists()
-    {
-        Some(maya_directory)
-    }
-    else 
-    {
-        None
-    }
-}
-
-pub fn get_maya_shelf_directory(maya_path: &PathBuf, maya_version: &usize) -> Option<PathBuf>
-{
-    let mut shelf_directory = PathBuf::new();
-
-    shelf_directory.push(&maya_path);
-    shelf_directory.push(maya_version.to_string());
-    shelf_directory.push("prefs");
-    shelf_directory.push("shelves");
-
-    if shelf_directory.exists()
-    {
-        Some(shelf_directory)
-    }
-    else 
-    {
-        None
-    }
-}
-
-pub fn get_maya_icons_directory(maya_path: &PathBuf, maya_version: &usize) -> Option<PathBuf>
-{
-    let mut icons_directory = PathBuf::new();
-
-    icons_directory.push(&maya_path);
-    icons_directory.push(maya_version.to_string());
-    icons_directory.push("prefs");
-    icons_directory.push("icons");
-
-    if icons_directory.exists()
-    {
-        Some(icons_directory)
-    }
-    else 
-    {
-        None
-    }
-}
-
-pub fn get_maya_installed_versions(maya_path: &PathBuf) -> Vec<usize>
-{
-    let mut maya_versions = Vec::new();
-
-    for entry in maya_path.read_dir().unwrap()
-    {
-        if let Ok(entry) = entry 
-        {
-            // Inefficent, needs refactor
-            for version in 2011..2020 
+            if shelf_data.response == "OK"
             {
-                if entry.path().ends_with(version.to_string())
-                {
-                    maya_versions.push(version);
-                }
+                info!("Shelf data OK");
+                shelf_data
             }
-        }
-    }
-
-    maya_versions
-}
-
-pub fn construct_icons_url(shelf: &Shelf) -> Vec<Icon>
-{
-    let mut icons: Vec<Icon> = Vec::new();
-
-    for icon in &shelf.icons_name
-    {
-        for variant in &shelf.icons_variants
+            else 
+            {
+                error!("Shelf data error");
+                panic!();
+            }
+        },
+        Err(error) =>
         {
-            let mut i: Icon = Default::default();
-            i.name = format!("{}{}.{}", &icon, &variant, &shelf.icons_extension);
-            icons.push(i);
+            error!("Json cannot be parsed: {}", error);
+            panic!();
         }
     }
-
-    icons
 }
 
 pub fn download_shelf_file(shelf: &Shelf) -> String
@@ -221,6 +116,23 @@ pub fn download_shelf_file(shelf: &Shelf) -> String
             panic!();
         }
     }
+}
+
+pub fn construct_icons_url(shelf: &Shelf) -> Vec<Icon>
+{
+    let mut icons: Vec<Icon> = Vec::new();
+
+    for icon in &shelf.icons_name
+    {
+        for variant in &shelf.icons_variants
+        {
+            let mut i: Icon = Default::default();
+            i.name = format!("{}{}.{}", &icon, &variant, &shelf.icons_extension);
+            icons.push(i);
+        }
+    }
+
+    icons
 }
 
 pub fn download_icons(shelf: &Shelf, icons: &mut Vec<Icon>)
@@ -268,27 +180,115 @@ pub fn set_maya_directory() -> PathBuf
     }
 }
 
-pub fn check_json(json_data: Result<Shelf, Error>) -> Shelf
+pub fn get_maya_installed_versions(maya_path: &PathBuf) -> Vec<usize>
 {
-    match json_data
+    let mut maya_versions = Vec::new();
+
+    for entry in maya_path.read_dir().unwrap()
     {
-        Ok(shelf_data) => 
+        if let Ok(entry) = entry 
         {
-            if shelf_data.response == "OK"
+            // Inefficent, needs refactor
+            for version in 2011..2020 
             {
-                info!("Shelf data OK");
-                shelf_data
+                if entry.path().ends_with(version.to_string())
+                {
+                    maya_versions.push(version);
+                }
             }
-            else 
-            {
-                error!("Shelf data error");
-                panic!();
-            }
-        },
-        Err(error) =>
-        {
-            error!("Json cannot be parsed: {}", error);
-            panic!();
         }
     }
+
+    maya_versions
+}
+
+pub fn get_maya_shelf_directory(maya_path: &PathBuf, maya_version: &usize) -> Option<PathBuf>
+{
+    let mut shelf_directory = PathBuf::new();
+
+    shelf_directory.push(&maya_path);
+    shelf_directory.push(maya_version.to_string());
+    shelf_directory.push("prefs");
+    shelf_directory.push("shelves");
+
+    if shelf_directory.exists()
+    {
+        Some(shelf_directory)
+    }
+    else 
+    {
+        None
+    }
+}
+
+pub fn get_maya_icons_directory(maya_path: &PathBuf, maya_version: &usize) -> Option<PathBuf>
+{
+    let mut icons_directory = PathBuf::new();
+
+    icons_directory.push(&maya_path);
+    icons_directory.push(maya_version.to_string());
+    icons_directory.push("prefs");
+    icons_directory.push("icons");
+
+    if icons_directory.exists()
+    {
+        Some(icons_directory)
+    }
+    else 
+    {
+        None
+    }
+}
+
+pub fn get_maya_directory() -> Option<PathBuf>
+{
+    let mut maya_directory = PathBuf::new();
+
+    match dirs::home_dir()
+    {
+        Some(path) => maya_directory.push(path),
+        None => panic!("Cannot get your HOME dir"),
+    }
+
+    match os_type::current_platform().os_type 
+    {
+        os_type::OSType::OSX => 
+        {
+            maya_directory.push("Library");
+            maya_directory.push("Preferences");
+            maya_directory.push("Autodesk");
+            maya_directory.push("maya");
+        },
+        // This will probably be Windows, or maybe not
+        _ => 
+        {
+            maya_directory.push("Documents");
+            maya_directory.push("maya");
+        }
+    }
+
+    info!("Maya directory: {:?}", &maya_directory);
+
+    if maya_directory.exists()
+    {
+        Some(maya_directory)
+    }
+    else 
+    {
+        None
+    }
+}
+
+pub fn write_file(content: &str, path: &PathBuf) -> io::Result<()>
+{
+    let mut file = File::create(path)?;
+    file.write_all(&content.as_bytes())?;
+    Ok(())
+}
+
+pub fn write_file_binary(content: &Vec<u8>, path: &PathBuf) -> io::Result<()>
+{
+    let mut file = File::create(path)?;
+    file.write_all(&content)?;
+    Ok(())
 }
