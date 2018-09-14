@@ -5,6 +5,9 @@ extern crate serde;
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate log;
+extern crate fern;
 
 use std::path::{PathBuf};
 
@@ -14,6 +17,13 @@ use installer::*;
 
 fn main() 
 {
+    fern::Dispatch::new()
+        .level(log::LevelFilter::Info)
+        .chain(std::io::stdout())
+        .chain(fern::log_file("output.log").unwrap())
+        .apply()
+        .unwrap();
+
     // Get Json data
     let json = get_json_data();
 
@@ -40,10 +50,11 @@ fn main()
 
     // Check which versions of Maya are installed
     let maya_installed_versions = get_maya_installed_versions(&maya_directory);
+    
     // For each Maya version:
     for maya_version in maya_installed_versions
     {
-        write_log_new(&format!("Now working on Maya version {}", maya_version));
+        info!("Now working on Maya version {}", maya_version);
 
         let mut maya_shelf_directory = PathBuf::new();
 
@@ -53,12 +64,12 @@ fn main()
         {
             Some(path) => 
             {
-                write_log_new(&format!("Found shelf directory for Maya {}, moving on", maya_version));
+                info!("Found shelf directory for Maya {}, moving on", maya_version);
                 maya_shelf_directory = path;
             },
             None => 
             {
-                write_log_new(&format!("There is no shelf directory for Maya {}, moving to the next version", maya_version));
+                warn!("There is no shelf directory for Maya {}, moving to the next version", maya_version);
                 continue;
             }
         }
@@ -70,7 +81,7 @@ fn main()
         // Check if shelf file exist
         if maya_file_shelf_path.exists()
         {
-            write_log("Shelf already exists, will be overwritten");
+            warn!("Shelf already exists, will be overwritten");
         }
 
         // Write shelf file
@@ -78,11 +89,11 @@ fn main()
         {
             Ok(()) => 
             {
-                write_log("Shelf writing complete");
+                info!("Shelf writing complete");
             },
             Err(error) => 
             {
-                write_log_new(&format!("Could not write shelf on the directory {:?}: {}", &maya_file_shelf_path, error));
+                warn!("Could not write shelf on the directory {:?}: {}", &maya_file_shelf_path, error);
             }
         }
 
@@ -94,12 +105,12 @@ fn main()
         {
             Some(path) => 
             {
-                write_log_new(&format!("Found icons directory for Maya {}, moving on", maya_version));
+                info!("Found icons directory for Maya {}, moving on", maya_version);
                 maya_icons_directory = path;
             },
             None => 
             {
-                write_log_new(&format!("There is no icons directory for Maya {}, moving to the next version", maya_version));
+                warn!("There is no icons directory for Maya {}, moving to the next version", maya_version);
                 continue;
             }
         }
@@ -114,7 +125,7 @@ fn main()
             // Check if icon file exists
             if icon_path.exists()
             {
-                write_log_new(&format!("File at {:?} already exists, will be overwritten", &icon_path));
+                warn!("File at {:?} already exists, will be overwritten", &icon_path);
             }
 
             // Write icon file
@@ -122,16 +133,16 @@ fn main()
             {
                 Ok(()) => 
                 {
-                    write_log_new(&format!("Writing icon {} complete", &icon.name));
+                    info!("Writing icon {} complete", &icon.name);
                 },
                 Err(error) => 
                 {
-                    write_log_new(&format!("Could not write icon on the directory {:?}: {}", &icon_path, error));
+                    warn!("Could not write icon on the directory {:?}: {}", &icon_path, error);
                 }
             }
         }
     }
 
     // Close and do stuff
-    write_log("Installation complete");
+    info!("Installation complete");
 }

@@ -41,19 +41,19 @@ pub fn get_json_data() -> String
             {
                 Ok(text) => 
                 {
-                    write_log("Shelf data downloaded");
+                    info!("Shelf data downloaded");
                     text
                 },
                 Err(error) => 
                 {
-                    write_log_new(&format!("Shelf data downloaded but got error: {}", error));
+                    error!("Shelf data downloaded but got error: {}", error);
                     panic!();
                 }
             }
         },
         Err(error) => 
         {
-            write_log_new(&format!("Error downloading shelf data: {}", error));
+            error!("Error downloading shelf data: {}", error);
             panic!();
         }
     }
@@ -106,7 +106,7 @@ pub fn get_maya_directory() -> Option<PathBuf>
         }
     }
 
-    println!("Maya directory: {:?}", &maya_directory);
+    info!("Maya directory: {:?}", &maya_directory);
 
     if maya_directory.exists()
     {
@@ -205,19 +205,19 @@ pub fn download_shelf_file(shelf: &Shelf) -> String
             {
                 Ok(text) => 
                 {
-                    write_log("Shelf downloaded");
+                    info!("Shelf downloaded");
                     text
                 },
                 Err(error) => 
                 {
-                    write_log_new(&format!("Shelf downloaded but got error: {}", error));
+                    error!("Shelf downloaded but got error: {}", error);
                     panic!();
                 }
             }
         },
         Err(error) => 
         {
-            write_log_new(&format!("Error downloading shelf: {}", error));
+            error!("Error downloading shelf: {}", error);
             panic!();
         }
     }
@@ -227,7 +227,7 @@ pub fn download_icons(shelf: &Shelf, icons: &mut Vec<Icon>)
 {
     for icon in icons
     {
-        write_log_new(&format!("Downloading icon {}", &icon.name));
+        info!("Downloading icon {}", &icon.name);
         
         match reqwest::get(&format!("{}{}", &shelf.icons_url, &icon.name))
         {
@@ -245,7 +245,7 @@ pub fn download_icons(shelf: &Shelf, icons: &mut Vec<Icon>)
             },
             Err(error) =>
             {
-                write_log_new(&format!("Error downloading icon: {}", error));
+                warn!("Error downloading icon: {}", error);
             }
         }
     }
@@ -257,12 +257,12 @@ pub fn set_maya_directory() -> PathBuf
     {
         Some(path) => 
         {
-            write_log("Found Maya directory");
+            info!("Found Maya directory");
             path
         },
         None => 
         {
-            write_log("Maya directory not found:");
+            error!("Maya directory not found:");
             panic!();
         }
     }
@@ -276,31 +276,19 @@ pub fn check_json(json_data: Result<Shelf, Error>) -> Shelf
         {
             if shelf_data.response == "OK"
             {
-                write_log("Shelf data OK");
+                info!("Shelf data OK");
                 shelf_data
             }
             else 
             {
-                write_log("Shelf data error");
+                error!("Shelf data error");
                 panic!();
             }
         },
         Err(error) =>
         {
-            write_log_new(&format!("Json cannot be parsed: {}", error));
+            error!("Json cannot be parsed: {}", error);
             panic!();
         }
     }
-}
-
-// TODO Refactor with generics
-
-pub fn write_log(content: &'static str)
-{
-    println!("{:?}", content);
-}
-
-pub fn write_log_new(content: &str)
-{
-    println!("{:?}", content);
 }
